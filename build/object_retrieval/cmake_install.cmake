@@ -1,8 +1,8 @@
-# Install script for directory: /home/cc/ee106a/fa17/class/ee106a-abb/ros_workspaces/project/src/object_retrieval
+# Install script for directory: /home/cc/ee106a/fa17/class/ee106a-acn/ros_workspaces/Robo-Delivery/src/object_retrieval
 
 # Set the install prefix
 IF(NOT DEFINED CMAKE_INSTALL_PREFIX)
-  SET(CMAKE_INSTALL_PREFIX "/home/cc/ee106a/fa17/class/ee106a-abb/ros_workspaces/project/install")
+  SET(CMAKE_INSTALL_PREFIX "/home/cc/ee106a/fa17/class/ee106a-acn/ros_workspaces/Robo-Delivery/install")
 ENDIF(NOT DEFINED CMAKE_INSTALL_PREFIX)
 STRING(REGEX REPLACE "/$" "" CMAKE_INSTALL_PREFIX "${CMAKE_INSTALL_PREFIX}")
 
@@ -33,17 +33,17 @@ IF(NOT DEFINED CMAKE_INSTALL_SO_NO_EXE)
 ENDIF(NOT DEFINED CMAKE_INSTALL_SO_NO_EXE)
 
 IF(NOT CMAKE_INSTALL_COMPONENT OR "${CMAKE_INSTALL_COMPONENT}" STREQUAL "Unspecified")
-  FILE(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/lib/pkgconfig" TYPE FILE FILES "/home/cc/ee106a/fa17/class/ee106a-abb/ros_workspaces/project/build/object_retrieval/catkin_generated/installspace/object_retrieval.pc")
+  FILE(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/lib/pkgconfig" TYPE FILE FILES "/home/cc/ee106a/fa17/class/ee106a-acn/ros_workspaces/Robo-Delivery/build/object_retrieval/catkin_generated/installspace/object_retrieval.pc")
 ENDIF(NOT CMAKE_INSTALL_COMPONENT OR "${CMAKE_INSTALL_COMPONENT}" STREQUAL "Unspecified")
 
 IF(NOT CMAKE_INSTALL_COMPONENT OR "${CMAKE_INSTALL_COMPONENT}" STREQUAL "Unspecified")
   FILE(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/share/object_retrieval/cmake" TYPE FILE FILES
-    "/home/cc/ee106a/fa17/class/ee106a-abb/ros_workspaces/project/build/object_retrieval/catkin_generated/installspace/object_retrievalConfig.cmake"
-    "/home/cc/ee106a/fa17/class/ee106a-abb/ros_workspaces/project/build/object_retrieval/catkin_generated/installspace/object_retrievalConfig-version.cmake"
+    "/home/cc/ee106a/fa17/class/ee106a-acn/ros_workspaces/Robo-Delivery/build/object_retrieval/catkin_generated/installspace/object_retrievalConfig.cmake"
+    "/home/cc/ee106a/fa17/class/ee106a-acn/ros_workspaces/Robo-Delivery/build/object_retrieval/catkin_generated/installspace/object_retrievalConfig-version.cmake"
     )
 ENDIF(NOT CMAKE_INSTALL_COMPONENT OR "${CMAKE_INSTALL_COMPONENT}" STREQUAL "Unspecified")
 
 IF(NOT CMAKE_INSTALL_COMPONENT OR "${CMAKE_INSTALL_COMPONENT}" STREQUAL "Unspecified")
-  FILE(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/share/object_retrieval" TYPE FILE FILES "/home/cc/ee106a/fa17/class/ee106a-abb/ros_workspaces/project/src/object_retrieval/package.xml")
+  FILE(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/share/object_retrieval" TYPE FILE FILES "/home/cc/ee106a/fa17/class/ee106a-acn/ros_workspaces/Robo-Delivery/src/object_retrieval/package.xml")
 ENDIF(NOT CMAKE_INSTALL_COMPONENT OR "${CMAKE_INSTALL_COMPONENT}" STREQUAL "Unspecified")
 

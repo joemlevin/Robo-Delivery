@@ -4,5 +4,5 @@ PROJECT_PKG_CONFIG_INCLUDE_DIRS = "".split(';') if "" != "" else []
 PROJECT_CATKIN_DEPENDS = "".replace(';', ' ')
 PKG_CONFIG_LIBRARIES_WITH_PREFIX = "".split(';') if "" != "" else []
 PROJECT_NAME = "object_retrieval"
-PROJECT_SPACE_DIR = "/home/cc/ee106a/fa17/class/ee106a-abb/ros_workspaces/project/devel"
+PROJECT_SPACE_DIR = "/home/cc/ee106a/fa17/class/ee106a-acn/ros_workspaces/Robo-Delivery/devel"
 PROJECT_VERSION = "0.0.0"

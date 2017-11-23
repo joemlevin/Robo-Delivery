@@ -7,4 +7,5 @@
 # new environment variables
 
 # modified environment variables
-export PWD="/home/cc/ee106a/fa17/class/ee106a-abb/ros_workspaces/project/build"
+export PWD="/home/cc/ee106a/fa17/class/ee106a-acn/ros_workspaces/Robo-Delivery/build"
+export ROS_PACKAGE_PATH="/home/cc/ee106a/fa17/class/ee106a-abb/ros_workspaces/project/src:/home/cc/ee106a/fa17/class/ee106a-acn/ros_workspaces/Robo-Delivery/src:/scratch/shared/baxter_ws/src:/opt/ros/indigo/share:/opt/ros/indigo/stacks"

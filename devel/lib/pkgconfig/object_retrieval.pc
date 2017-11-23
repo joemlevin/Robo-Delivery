@@ -1,8 +1,8 @@
-prefix=/home/cc/ee106a/fa17/class/ee106a-abb/ros_workspaces/project/devel
+prefix=/home/cc/ee106a/fa17/class/ee106a-acn/ros_workspaces/Robo-Delivery/devel
 
 Name: object_retrieval
 Description: Description of object_retrieval
 Version: 0.0.0
 Cflags: 
-Libs: -L/home/cc/ee106a/fa17/class/ee106a-abb/ros_workspaces/project/devel/lib 
+Libs: -L/home/cc/ee106a/fa17/class/ee106a-acn/ros_workspaces/Robo-Delivery/devel/lib 
 Requires: 

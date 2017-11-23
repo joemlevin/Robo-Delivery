@@ -1,7 +1,7 @@
 FILE(REMOVE_RECURSE
   "CMakeFiles/kinect_filtering.dir/src/kinect_filtering.cpp.o"
-  "/home/cc/ee106a/fa17/class/ee106a-abb/ros_workspaces/project/devel/lib/libkinect_filtering.pdb"
-  "/home/cc/ee106a/fa17/class/ee106a-abb/ros_workspaces/project/devel/lib/libkinect_filtering.so"
+  "/home/cc/ee106a/fa17/class/ee106a-acn/ros_workspaces/Robo-Delivery/devel/lib/libkinect_filtering.pdb"
+  "/home/cc/ee106a/fa17/class/ee106a-acn/ros_workspaces/Robo-Delivery/devel/lib/libkinect_filtering.so"
 )
 
 # Per-language clean rules from dependency scanning.

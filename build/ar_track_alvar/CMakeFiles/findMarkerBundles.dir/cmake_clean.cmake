@@ -1,7 +1,7 @@
 FILE(REMOVE_RECURSE
   "CMakeFiles/findMarkerBundles.dir/nodes/FindMarkerBundles.cpp.o"
-  "/home/cc/ee106a/fa17/class/ee106a-abb/ros_workspaces/project/devel/lib/ar_track_alvar/findMarkerBundles.pdb"
-  "/home/cc/ee106a/fa17/class/ee106a-abb/ros_workspaces/project/devel/lib/ar_track_alvar/findMarkerBundles"
+  "/home/cc/ee106a/fa17/class/ee106a-acn/ros_workspaces/Robo-Delivery/devel/lib/ar_track_alvar/findMarkerBundles.pdb"
+  "/home/cc/ee106a/fa17/class/ee106a-acn/ros_workspaces/Robo-Delivery/devel/lib/ar_track_alvar/findMarkerBundles"
 )
 
 # Per-language clean rules from dependency scanning.

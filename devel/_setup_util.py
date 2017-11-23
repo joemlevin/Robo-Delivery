@@ -263,7 +263,7 @@ if __name__ == '__main__':
             sys.exit(1)
 
         # environment at generation time
-        CMAKE_PREFIX_PATH = '/home/cc/ee106a/fa17/class/ee106a-abb/ros_workspaces/project/devel;/home/cc/ee106a/fa17/class/ee106a-abb/ros_workspaces/lab8/devel;/home/cc/ee106a/fa17/class/ee106a-abb/ros_workspaces/lab7_baxter/devel;/home/cc/ee106a/fa17/class/ee106a-abb/ros_workspaces/lab7/devel;/home/cc/ee106a/fa17/class/ee106a-abb/ros_workspaces/lab5_baxter/devel;/home/cc/ee106a/fa17/class/ee106a-abb/ros_workspaces/lab5/devel;/home/cc/ee106a/fa17/class/ee106a-abb/ros_workspaces/lab3_baxter/devel;/home/cc/ee106a/fa17/class/ee106a-abb/ros_workspaces/lab4/devel;/scratch/shared/baxter_ws/devel;/opt/ros/indigo'.split(';')
+        CMAKE_PREFIX_PATH = '/home/cc/ee106a/fa17/class/ee106a-acn/ros_workspaces/Robo-Delivery/devel;/scratch/shared/baxter_ws/devel;/opt/ros/indigo'.split(';')
         # prepend current workspace if not already part of CPP
         base_path = os.path.dirname(__file__)
         if base_path not in CMAKE_PREFIX_PATH:

@@ -8,7 +8,7 @@
 
 # since this file is sourced either use the provided _CATKIN_SETUP_DIR
 # or fall back to the destination set at configure time
-: ${_CATKIN_SETUP_DIR:=/home/cc/ee106a/fa17/class/ee106a-abb/ros_workspaces/project/install}
+: ${_CATKIN_SETUP_DIR:=/home/cc/ee106a/fa17/class/ee106a-acn/ros_workspaces/Robo-Delivery/install}
 _SETUP_UTIL="$_CATKIN_SETUP_DIR/_setup_util.py"
 unset _CATKIN_SETUP_DIR
 
