@@ -47,8 +47,8 @@ def move_to_goal(move_base, linear_pos):
   ar_goal.target_pose.header.frame_id = '/map'
   ar_goal.target_pose.header.stamp = rospy.Time.now()
   # Create the pose
-  ar_goal.target_pose.pose.position.x = linear_pos[0]
-  ar_goal.target_pose.pose.position.y = linear_pos[1]
+  ar_goal.target_pose.pose.position.x = linear_pos[0] - 0.1
+  ar_goal.target_pose.pose.position.y = linear_pos[1] + 1.2
   print("This is my x %r" % linear_pos[0])
   print("This is my y %r" % linear_pos[1])
   ar_goal.target_pose.pose.orientation.w = 0.5
@@ -58,7 +58,7 @@ def move_to_goal(move_base, linear_pos):
   move_base.send_goal(ar_goal)
 
   # Allow Turtlebot up to 60 secs to complete task
-  success = move_base.wait_for_result(rospy.Duration(30))
+  success = move_base.wait_for_result(rospy.Duration(60))
   if not success:
     move_base.cancel_goal()
     rospy.loginfo("The base failed to move forward to the tag for some reason.")
@@ -124,6 +124,7 @@ def mover():
       elif state == GoalStatus.PENDING:
         rospy.loginfo("The goal has yet to be processed by the action server.")
         move_to_goal(move_base, trans)
+      break
 
     
     # Use our rate object to sleep until it is time to publish again
