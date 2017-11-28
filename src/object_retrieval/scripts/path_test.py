@@ -6,6 +6,8 @@ from moveit_msgs.msg import OrientationConstraint, Constraints
 from geometry_msgs.msg import PoseStamped
 import tf
 
+DEPTH_CORRECTION = .9
+
 def main():
     #Initialize moveit_commander
     moveit_commander.roscpp_initialize(sys.argv)
@@ -31,14 +33,18 @@ def main():
     #x, y, and z position
     while not rospy.is_shutdown():
         success = False
+        raw_input('Press <Enter> to attempt to plan')
         while not success:
             try:
-                (trans, rot) = listener.lookupTransform('/base', '/ar_marker_0', rospy.Time(0))
+                (trans_ar_to_base, rot_ar_to_base) = listener.lookupTransform('/base', '/ar_marker_0', rospy.Time(0))
+                (trans_head_to_base, rot_head_to_base) = listener.lookupTransform('/base', '/head_camera', rospy.Time(0))
                 success = True
             except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
                 continue
-        print(trans)
-        gripper_pos = trans
+        trans_corrected = [DEPTH_CORRECTION * x + (1 - DEPTH_CORRECTION) * y for x, y in zip(trans_ar_to_base, trans_head_to_base)]
+        print(trans_ar_to_base)
+        print(trans_corrected)
+        gripper_pos = trans_corrected
         goal_1.pose.position.x = gripper_pos[0]
         goal_1.pose.position.y = gripper_pos[1]
         goal_1.pose.position.z = gripper_pos[2]
@@ -54,7 +60,7 @@ def main():
 
         #Set the start state for the right arm
         right_arm.set_start_state_to_current_state()
-
+        
         #Plan a path
         right_plan = right_arm.plan()
 
