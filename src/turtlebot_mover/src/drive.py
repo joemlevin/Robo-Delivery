@@ -12,6 +12,8 @@ import math
 import time
 import actionlib
 
+from enum import Enum
+
 #Import the String message type from the /msg directory of
 #the std_msgs package.
 from std_msgs.msg import String
@@ -24,21 +26,16 @@ from move_base_msgs.msg import MoveBaseGoal
 from move_base_msgs.msg import MoveBaseAction
 from actionlib_msgs.msg import *
 
-current_orientation = Quaternion(0,0,1,1)
+class Stage(Enum):
+  DELIVER = 1
+  WAIT = 2
+  RETURN = 3
 
 # Important Information: 
 # As long as you and the turtlebot is using the same "Master" 
 # -- by inputting the following into terminal or .bashrc file 
 # "export ROS_MASTER_URI=http://[TurtleID].local.11311 -- 
 # then you can talk to the topics used in the turtlebot's machine. 
-
-# Called when subscriber receives an imu_message
-def imu_callback(imu_message):
-  # Get the current orientation and set it in the Global variable.
-  # The mover will need this variable to always be updated with the
-  # latest orientation data.
-  global current_orientation
-  current_orientation = imu_message.orientation
 
 def move_to_goal(move_base, linear_pos, orientation):
   print("Starting to make a goal...")
@@ -53,7 +50,6 @@ def move_to_goal(move_base, linear_pos, orientation):
   print("This is my y %r" % linear_pos[1])
   ar_goal.target_pose.pose.orientation = orientation
   print("This is my orientation: %r" % orientation)
-  # target.pose.orientation = current_orientation
   
   # Send our goal to client
   move_base.send_goal(ar_goal)
@@ -64,12 +60,31 @@ def move_to_goal(move_base, linear_pos, orientation):
     move_base.cancel_goal()
     rospy.loginfo("The base failed to move forward to the tag for some reason.")
   else:
-    print('It should have been successful')
     state = move_base.get_state()
     return state
 
-# def print_status():
-#   return 
+def print_status(state):
+  if state == GoalStatus.SUCCEEDED:
+    rospy.loginfo("Made it to the goal!")
+  elif state == GoalStatus.PENDING:
+    rospy.loginfo("The goal has yet to be processed by the action server.")
+  elif state == GoalStatus.ABORTED:
+    rospy.loginfo('The goal was aborted during execution by the action server due to some failure')
+  elif state == GoalStatus.REJECTED:
+    rospy.loginfo("The goal was rejected.")
+  elif state == GoalStatus.PREEMPTING:
+    rospy.loginfo("The goal received a cancel request after exectution.")
+  return
+
+def turn(vel_pub):
+  linear_motion = Vector3(0, 0, 0)
+  angular_motion = Vector3(0,0,0.70)
+  forward_motion = Twist(linear_motion, angular_motion)
+  ######
+
+  # Publish our velocity twist to the 'teleop' topic
+  vel_pub.publish(forward_motion)
+  return
 
 # Define the method which contains the main functionality of the node.
 def mover():
@@ -79,6 +94,8 @@ def mover():
   # Run this program as a new node in the ROS computation graph 
   # called /talker.
   rospy.init_node('mover', anonymous=True)
+
+  status_channel = rospy.Publisher('turtlebot_status', String, queue_size=10)
 
   # Create an instance of the rospy.Publisher object which we can 
   # use to publish messages to a topic. This publisher publishes 
@@ -94,91 +111,71 @@ def mover():
   # Create a listener to listen to position of detected AR Tag.
   listener = tf.TransformListener()
 
-  #Create a subscriber to receive the robot's current position
-  rospy.Subscriber('/mobile_base/sensors/imu_data', Imu, imu_callback)
-
   # Create a timer object that will sleep long enough to result in
   # a 10Hz publishing rate
   r = rospy.Rate(10) # 10hz  
 
   # Set up the while loop and wait for the robot to warm up
-  ar_tag = '/ar_marker_0'
   time.sleep(5)
+  ar_tag = '/ar_marker_0'
   (start_trans, _) = listener.lookupTransform('/map', '/base_link', rospy.Time(0))
   start_rotation = Quaternion(0,0,0.26428,0.96445)
+  current_stage = Stage.DELIVER
 
   # Loop until the node is killed with Ctrl-C
   while not rospy.is_shutdown():
-    # Get the trans and rotational positions of the AR Tag
-    try: 
-      (trans, rotation) = listener.lookupTransform('/map', ar_tag, rospy.Time(0))
-    except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException) as e:
-      # If I cannot find an AR Tag, turn to search for it. 
-      # Make the robot turn until it finds the AR Tag. 
-      linear_motion = Vector3(0, 0, 0)
-      angular_motion = Vector3(0,0,0.70)
-      forward_motion = Twist(linear_motion, angular_motion)
-      ######
-    
-      # Publish our velocity twist to the 'teleop' topic
-      vel_pub.publish(forward_motion)
-    else:
-      # Hard code what the orientation and actual trans should be....
-      if (ar_tag == '/ar_marker_0'):
-        rotation = Quaternion(0,0,0.178,0.984)
-        trans[1] += 1
-      if (ar_tag == '/ar_marker_4'):
-        rotation = Quaternion(0,0,0.178,0.984)
-        trans[1] += -0.5
-      if (ar_tag == '/ar_marker_11'):
-        # Move to that exact position
-        trans[0] += -0.4
-        rotation = Quaternion(0,0,-0.1202,0.99275)
-
-      # global current_orientation
-      # rotation = current_orientation
-
-      # Now take the action. 
-      print("Taking the motion for AR Tag: %r" % ar_tag)
-      state = move_to_goal(move_base, trans, rotation)
-      if state == GoalStatus.SUCCEEDED:
-        rospy.loginfo("Made it to the goal!")
-      elif state == GoalStatus.ABORTED:
-        rospy.loginfo('The goal was aborted during execution by the action server due to some failure')
-      elif state == GoalStatus.REJECTED:
-        rospy.loginfo("The goal was rejected.")
-      elif state == GoalStatus.PREEMPTING:
-        rospy.loginfo("The goal received a cancel request after exectution.")
-      elif state == GoalStatus.PENDING:
-        rospy.loginfo("The goal has yet to be processed by the action server.")
-        move_to_goal(move_base, trans)
-
-      #Transition to the state phase of the route
-      if ar_tag == '/ar_marker_0':
-        ar_tag = '/ar_marker_4'
-      elif ar_tag == '/ar_marker_4':
-        ar_tag = '/ar_marker_11'
-      elif ar_tag == '/ar_marker_11':
-        raw_input("It should have reached it's destination. Press <enter>.")
-        # (trans, rotation) = listener.lookupTransform('/base_link', '/map', rospy.Time(0))
-        state = move_to_goal(move_base, start_trans, start_rotation)
+    if current_stage == Stage.DELIVER:
+      # Deliver the object to destination
+      # Get the trans and rotational positions of the AR Tag
+      try: 
+        (trans, rotation) = listener.lookupTransform('/map', ar_tag, rospy.Time(0))
+      except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException) as e:
+        # If I cannot find an AR Tag, turn to search for it. 
+        # Make the robot turn until it finds the AR Tag. 
+        turn(vel_pub)
+      else:
+        # We have found an AR_Tag. Let's take move to it.
+        if (ar_tag == '/ar_marker_0'):
+          rotation = Quaternion(0,0,0.178,0.984)
+          trans[1] += 1
+        if (ar_tag == '/ar_marker_4'):
+          rotation = Quaternion(0,0,0.178,0.984)
+          trans[1] += -0.9
+        if (ar_tag == '/ar_marker_11'):
+          # Move to that exact position
+          trans[0] += -0.6
+          # trans[1] += 0.
+          rotation = Quaternion(0,0,0,0.99275)
+        # Now take the action. 
+        rospy.loginfo("Taking the motion for AR Tag: %r" % ar_tag)
+        state = move_to_goal(move_base, trans, rotation)
+        print_status(state)
         if state == GoalStatus.SUCCEEDED:
-          rospy.loginfo("Made it to the goal!")
-        elif state == GoalStatus.ABORTED:
-          rospy.loginfo('The goal was aborted during execution by the action server due to some failure')
-        elif state == GoalStatus.REJECTED:
-          rospy.loginfo("The goal was rejected.")
-        elif state == GoalStatus.PREEMPTING:
-          rospy.loginfo("The goal received a cancel request after exectution.")
+          # Transition to the next state.
+          if ar_tag == '/ar_marker_0':
+            ar_tag = '/ar_marker_4'
+          elif ar_tag == '/ar_marker_4':
+            ar_tag = '/ar_marker_11'
+          elif ar_tag == '/ar_marker_11':
+            pub_string = "Sawyer I am here! %s" % (rospy.get_time())
+            status_channel.publish(pub_string)
+            current_stage = Stage.WAIT
+            rospy.loginfo("I am about to wait...")
         elif state == GoalStatus.PENDING:
-          rospy.loginfo("The goal has yet to be processed by the action server.")
-          move_to_goal(move_base, trans)
-        break
+          # Try it again or wait until it is not pending
+          break
+        else: 
+          # We have failed and we should do something.
+          break
+    elif current_stage == Stage.WAIT:
+      # Wait until I get a signal from Saywer
+      raw_input("Just press enter.")
+    else:
+      # Return to the starting point
+      state = move_to_goal(move_base, start_trans, start_rotation)
+      print_status(state)
+  
 
-
-
-
-    
     # Use our rate object to sleep until it is time to publish again
     r.sleep()
       
