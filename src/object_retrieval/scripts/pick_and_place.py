@@ -15,7 +15,7 @@ from intera_interface import CHECK_VERSION
 DEPTH_CORRECTION = .9
 GRIPPER_OFFSET = 0.2 # offset to prevent gripper collision with cube
 PICK_OFFSET = 0.09 # offset to bring cube into reach of gripper
-DROP_OFFSET = 0.25 # drop off offset
+DROP_OFFSET = 0.19 # drop off offset
 INITIAL_POSITION = {'right_j6': 1.6959248046875, 'right_j5': 2.5555615234375, 
 'right_j4': -0.101990234375, 'right_j3': -1.5755078125, 
 'right_j2': -0.002775390625, 'right_j1': 0.4079228515625, 'right_j0': 0.2727294921875}
@@ -107,10 +107,11 @@ def set_pose(pose):
         success = np.all(joint_progess)
 
 def find_tag(listener, marker="/ar_marker_0"):
-    cube_detected = success = False
+    cube_detected = False
+    success = False
     while not cube_detected and not success and not rospy.is_shutdown():
         print("Attempting to find pick up location")
-        rospy.sleep(1.0)
+        rospy.sleep(2.0)
         try:
             if not cube_detected:
                 (cube_pos, cube_orientation) = listener.lookupTransform('/base', marker, rospy.Time(0))
@@ -156,7 +157,7 @@ def pick_up(robot, scene, right_arm, gripper, listener):
     rospy.sleep(2)
 
     # Attempt to lower gripper over Cube for pick up
-    cube_pose[2] -= PICK_OFFSET
+    cube_pose[2] -= PICK_OFFSET - .04
 
     plan = plan_motion_constrained(right_arm, cube_pose)
     if plan.joint_trajectory.points:
@@ -182,13 +183,15 @@ def pick_up(robot, scene, right_arm, gripper, listener):
     drop_off_pose = drop_off_pos + [0.0, -1.0, 0.0, 0.0]
     drop_off_pose[2] += DROP_OFFSET
     # Drop off cube
-    plan = plan_motion(right_arm, drop_off_pose)
-    if plan.joint_trajectory.points:
+    
+    at_drop_off = False
+    while not at_drop_off and not rospy.is_shutdown():
         print("Dropping off cube")
         rospy.sleep(0.5)
-        right_arm.execute(plan)
+        plan = plan_motion(right_arm, drop_off_pose)
+        at_drop_off = execute_motion(right_arm, plan)
         rospy.sleep(0.2)
-        gripper.open()
+    gripper.open()
 
 def drop_off(robot, scene, right_arm, gripper, listener):
     # Instantiate flags for different phases
