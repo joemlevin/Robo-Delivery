@@ -37,7 +37,7 @@ def imu_callback(imu_message):
   # Get the current orientation and set it in the Global variable.
   # The mover will need this variable to always be updated with the
   # latest orientation data.
-  global current_orientation 
+  global current_orientation
   current_orientation = imu_message.orientation
 
 def move_to_goal(move_base, linear_pos, orientation):
@@ -48,7 +48,7 @@ def move_to_goal(move_base, linear_pos, orientation):
   ar_goal.target_pose.header.stamp = rospy.Time.now()
   # Create the pose
   ar_goal.target_pose.pose.position.x = linear_pos[0] 
-  ar_goal.target_pose.pose.position.y = linear_pos[1] + 0.25
+  ar_goal.target_pose.pose.position.y = linear_pos[1]
   print("This is my x %r" % linear_pos[0])
   print("This is my y %r" % linear_pos[1])
   ar_goal.target_pose.pose.orientation = orientation
@@ -68,18 +68,21 @@ def move_to_goal(move_base, linear_pos, orientation):
     state = move_base.get_state()
     return state
 
-#Define the method which contains the main functionality of the node.
+# def print_status():
+#   return 
+
+# Define the method which contains the main functionality of the node.
 def mover():
   curr_seq = 0 # For the header
   goal_made = False
 
-  #Run this program as a new node in the ROS computation graph 
-  #called /talker.
+  # Run this program as a new node in the ROS computation graph 
+  # called /talker.
   rospy.init_node('mover', anonymous=True)
 
-  #Create an instance of the rospy.Publisher object which we can 
-  #use to publish messages to a topic. This publisher publishes 
-  #messages of type geometry_msgs/Twist to the topic /cmd_vel_mux/input/teleop
+  # Create an instance of the rospy.Publisher object which we can 
+  # use to publish messages to a topic. This publisher publishes 
+  # messages of type geometry_msgs/Twist to the topic /cmd_vel_mux/input/teleop
   vel_pub = rospy.Publisher('/cmd_vel_mux/input/teleop', Twist, queue_size=10)
 
   # Tell the action client that we want to spin a thread by default
@@ -88,11 +91,11 @@ def mover():
   # Allow up to 5 secs for the action server to come up
   move_base.wait_for_server(rospy.Duration(10))
   
-  #Create a listener to listen to position of detected AR Tag.
+  # Create a listener to listen to position of detected AR Tag.
   listener = tf.TransformListener()
 
-  #Create a listener to know the robot's current position
-  data_listener = rospy.Subscriber('/mobile_base/sensors/imu_data', Imu, imu_callback)
+  #Create a subscriber to receive the robot's current position
+  rospy.Subscriber('/mobile_base/sensors/imu_data', Imu, imu_callback)
 
   # Create a timer object that will sleep long enough to result in
   # a 10Hz publishing rate
@@ -101,6 +104,8 @@ def mover():
   # Set up the while loop and wait for the robot to warm up
   ar_tag = '/ar_marker_0'
   time.sleep(5)
+  (start_trans, _) = listener.lookupTransform('/map', '/base_link', rospy.Time(0))
+  start_rotation = Quaternion(0,0,0.26428,0.96445)
 
   # Loop until the node is killed with Ctrl-C
   while not rospy.is_shutdown():
@@ -111,7 +116,7 @@ def mover():
       # If I cannot find an AR Tag, turn to search for it. 
       # Make the robot turn until it finds the AR Tag. 
       linear_motion = Vector3(0, 0, 0)
-      angular_motion = Vector3(0,0,0.40)
+      angular_motion = Vector3(0,0,0.70)
       forward_motion = Twist(linear_motion, angular_motion)
       ######
     
@@ -120,12 +125,19 @@ def mover():
     else:
       # Hard code what the orientation and actual trans should be....
       if (ar_tag == '/ar_marker_0'):
-        rotation = Quaternion(0,0,0.5,1)
-        trans[1] += 0.25
+        rotation = Quaternion(0,0,0.178,0.984)
+        trans[1] += 1
       if (ar_tag == '/ar_marker_4'):
-        rotation = Quaternion(0,0,0.9,0.43)
-        trans[0] += 0.23
-        trans[1] += 0.6
+        rotation = Quaternion(0,0,0.178,0.984)
+        trans[1] += -0.5
+      if (ar_tag == '/ar_marker_11'):
+        # Move to that exact position
+        trans[0] += -0.4
+        rotation = Quaternion(0,0,-0.1202,0.99275)
+
+      # global current_orientation
+      # rotation = current_orientation
+
       # Now take the action. 
       print("Taking the motion for AR Tag: %r" % ar_tag)
       state = move_to_goal(move_base, trans, rotation)
@@ -145,6 +157,22 @@ def mover():
       if ar_tag == '/ar_marker_0':
         ar_tag = '/ar_marker_4'
       elif ar_tag == '/ar_marker_4':
+        ar_tag = '/ar_marker_11'
+      elif ar_tag == '/ar_marker_11':
+        raw_input("It should have reached it's destination. Press <enter>.")
+        # (trans, rotation) = listener.lookupTransform('/base_link', '/map', rospy.Time(0))
+        state = move_to_goal(move_base, start_trans, start_rotation)
+        if state == GoalStatus.SUCCEEDED:
+          rospy.loginfo("Made it to the goal!")
+        elif state == GoalStatus.ABORTED:
+          rospy.loginfo('The goal was aborted during execution by the action server due to some failure')
+        elif state == GoalStatus.REJECTED:
+          rospy.loginfo("The goal was rejected.")
+        elif state == GoalStatus.PREEMPTING:
+          rospy.loginfo("The goal received a cancel request after exectution.")
+        elif state == GoalStatus.PENDING:
+          rospy.loginfo("The goal has yet to be processed by the action server.")
+          move_to_goal(move_base, trans)
         break
 
 
