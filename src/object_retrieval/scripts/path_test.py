@@ -17,12 +17,17 @@ INITIAL_POSITION = {'right_j6': 1.6959248046875, 'right_j5': 2.5555615234375,
 'right_j4': -0.101990234375, 'right_j3': -1.5755078125, 
 'right_j2': -0.002775390625, 'right_j1': 0.4079228515625, 'right_j0': 0.2727294921875}
 
-CUBE_ID_POSE = {'right_j6': 0.0456103515625, 'right_j5': 1.0447099609375, 
-    'right_j4': -0.6278916015625, 'right_j3': -2.2208623046875, 
-    'right_j2': 0.1072822265625, 'right_j1': 1.12991015625, 'right_j0': -0.6118203125}
+CUBE_ID_POSE = {'right_j6': 0.5001396484375, 'right_j5': 1.249232421875, 
+'right_j4': -0.5017265625, 'right_j3': -1.939955078125, 
+'right_j2': -0.083318359375, 'right_j1': 0.63296484375, 'right_j0': -0.5384716796875}
+
+### UNCOMMENT IN CASE OF EMERGENCIES
+# CUBE_ID_POSE = {'right_j6': 0.0456103515625, 'right_j5': 1.0447099609375, 
+#     'right_j4': -0.6278916015625, 'right_j3': -2.2208623046875, 
+# 'right_j2': 0.1072822265625, 'right_j1': 1.12991015625, 'right_j0': -0.6118203125}
 
 CLEAR_OF_TABLE_POSITION = (0.593, 0.000, 0.322, 0.0, -1.0, 0.0, 0.0)
-CUBE_DROP_OFF_POSITION = (0.653, 0.249, -0.397, 0.0, -1.0, 0.0, 0.0)
+CUBE_DROP_OFF_POSITION = (0.709, 0.228, -0.235, 0.0, -1.0, 0.0, 0.0)
 
 
 def plan_motion(commander, goal_pose):
@@ -120,7 +125,7 @@ def main():
     # Initialize gripper
     gripper = intera_interface.gripper.Gripper('right')
     gripper.calibrate()
-    rospy.sleep(2.0)
+    rospy.sleep(0.5)
 
     #Initialize goals
     goal_1 = PoseStamped()
@@ -134,13 +139,13 @@ def main():
     at_drop_off = False
     # Move arm to initial position
     print("Moving to initial position")
-    rospy.sleep(2.0)
+    rospy.sleep(0.5)
     set_pose(INITIAL_POSITION)
     # Move arm to cube detection area
     print("Moving to cube ID position")
-    rospy.sleep(2.0)
+    rospy.sleep(0.5)
     set_pose(CUBE_ID_POSE)
-
+    # sys.exit()
     # Attempt to move arm above AR Cube with gripper pointed down
     while not success and not rospy.is_shutdown():
         rospy.sleep(2.0)
@@ -158,9 +163,10 @@ def main():
     cube_pose[2] += .2
     while not at_pick_up and not rospy.is_shutdown():
         print("Attempting to move to pick up location")
-        rospy.sleep(2.0)
+        rospy.sleep(0.5)
         plan = plan_motion(right_arm, cube_pose)
         at_pick_up = execute_motion(right_arm, plan)
+    gripper.open()
     rospy.sleep(2)
 
     # Attempt to lower gripper over Cube for pick up
@@ -170,7 +176,7 @@ def main():
     if plan.joint_trajectory.points:
         #Execute the plan
         print("Attempting to lower onto cube")
-        rospy.sleep(2.0)
+        rospy.sleep(0.5)
         right_arm.execute(plan)
         gripper.close()
     else:
@@ -181,7 +187,7 @@ def main():
     plan = plan_motion_constrained(right_arm, cube_pose)
     if plan.joint_trajectory.points:
         print("Attempting to raise arm up")
-        rospy.sleep(2.0)
+        rospy.sleep(0.5)
         right_arm.execute(plan)
     else:
         print("Planning failed")
@@ -189,13 +195,13 @@ def main():
     # Move arm to drop off location
     while not cleared_table and not rospy.is_shutdown():
         print("Attempting to move clear of table")
-        rospy.sleep(2.0)
+        rospy.sleep(0.5)
         plan = plan_motion(right_arm, CLEAR_OF_TABLE_POSITION)
         cleared_table = execute_motion(right_arm, plan)
 
     while not at_drop_off and not rospy.is_shutdown():
         print("Attempting to move to drop off")
-        rospy.sleep(2.0)
+        rospy.sleep(0.5)
         plan = plan_motion(right_arm, CUBE_DROP_OFF_POSITION)
         at_drop_off = execute_motion(right_arm, plan)
     gripper.open()
