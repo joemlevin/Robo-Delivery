@@ -13,6 +13,10 @@ from intera_interface import CHECK_VERSION
 
 DEPTH_CORRECTION = .9
 
+INITIAL_POSITION = {'right_j6': 1.6959248046875, 'right_j5': 2.5555615234375, 
+'right_j4': -0.101990234375, 'right_j3': -1.5755078125, 
+'right_j2': -0.002775390625, 'right_j1': 0.4079228515625, 'right_j0': 0.2727294921875}
+
 CUBE_ID_POSE = {'right_j6': 0.0456103515625, 'right_j5': 1.0447099609375, 
     'right_j4': -0.6278916015625, 'right_j3': -2.2208623046875, 
     'right_j2': 0.1072822265625, 'right_j1': 1.12991015625, 'right_j0': -0.6118203125}
@@ -70,6 +74,12 @@ def plan_motion_constrained(commander, goal_pose):
     #Return plan
     return plan
 
+def execute_motion(commander, plan):
+    if not plan.joint_trajectory.points:
+        return False
+    else:
+        commander.execute(plan)
+        return True
 # def get_joint_angles():
 #     rp = intera_interface.RobotParams()
 #     valid_limbs = rp.get_limb_names()
@@ -117,70 +127,78 @@ def main():
     goal_1.header.frame_id = "base"
     # print(get_joint_angles())
     #x, y, and z position
-    while not rospy.is_shutdown():
-        success = False
-        # Move arm to cube detection area
-        raw_input('Press <Enter> to go to cube identification area')
-        set_pose(CUBE_ID_POSE)
+    #while not rospy.is_shutdown():
+    success = False
+    at_pick_up = False
+    cleared_table = False
+    at_drop_off = False
+    # Move arm to initial position
+    print("Moving to initial position")
+    rospy.sleep(2.0)
+    set_pose(INITIAL_POSITION)
+    # Move arm to cube detection area
+    print("Moving to cube ID position")
+    rospy.sleep(2.0)
+    set_pose(CUBE_ID_POSE)
 
-        # Attempt to move arm above AR Cube with gripper pointed down
-        while not success and not rospy.is_shutdown():
-            print("Place cube within view of hand camera")
-            raw_input("Press <Enter> to plan path to grasp cube")
-            try:
-                (trans_ar_to_base, rot_ar_to_base) = listener.lookupTransform('/base', '/ar_marker_0', rospy.Time(0))
-                (trans_head_to_base, rot_head_to_base) = listener.lookupTransform('/base', '/head_camera', rospy.Time(0))
-                success = True
-            except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
-                continue
-        cube_pose = trans_ar_to_base + [0, -1.0, 0, 0]
-        # Add in z-axis offset to account for gripper length
-        cube_pose[2] += .2
+    # Attempt to move arm above AR Cube with gripper pointed down
+    while not success and not rospy.is_shutdown():
+        rospy.sleep(2.0)
+        print("Attempting to find pick up location")
+        try:
+            (trans_ar_to_base, rot_ar_to_base) = listener.lookupTransform('/base', '/ar_marker_0', rospy.Time(0))
+            (trans_head_to_base, rot_head_to_base) = listener.lookupTransform('/base', '/head_camera', rospy.Time(0))
+            success = True
+            print("Success!")
+        except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
+            print("AR Cube not detected.")
+            success = False
+    cube_pose = trans_ar_to_base + [0, -1.0, 0, 0]
+    # Add in z-axis offset to account for gripper length
+    cube_pose[2] += .2
+    while not at_pick_up and not rospy.is_shutdown():
+        print("Attempting to move to pick up location")
+        rospy.sleep(2.0)
         plan = plan_motion(right_arm, cube_pose)
-        if plan.joint_trajectory.points:
-            #Execute the plan
-            raw_input('Press <Enter> to move the right arm to goal pose 1 (path constraints are never enforced during this motion): ')
-            right_arm.execute(plan)
-            gripper.open()
-        else:
-            print("Planning failed")
-        rospy.sleep(2)
+        at_pick_up = execute_motion(right_arm, plan)
+    rospy.sleep(2)
 
-        # Attempt to lower gripper over Cube for pick up
-        cube_pose[2] -= 0.09
+    # Attempt to lower gripper over Cube for pick up
+    cube_pose[2] -= 0.09
 
-        plan = plan_motion_constrained(right_arm, cube_pose)
-        if plan.joint_trajectory.points:
-            #Execute the plan
-            raw_input('Press <Enter> to lower arm over cube')
-            right_arm.execute(plan)
-            gripper.close()
-        else:
-            print("Planning failed")
+    plan = plan_motion_constrained(right_arm, cube_pose)
+    if plan.joint_trajectory.points:
+        #Execute the plan
+        print("Attempting to lower onto cube")
+        rospy.sleep(2.0)
+        right_arm.execute(plan)
+        gripper.close()
+    else:
+        print("Planning failed")
 
-        # Raise arm back to clear cube of table
-        cube_pose[2] += 0.09
-        plan = plan_motion_constrained(right_arm, cube_pose)
-        if plan.joint_trajectory.points:
-            raw_input('Press <Enter> to raise arm back up')
-            right_arm.execute(plan)
-        else:
-            print("Planning failed")
+    # Raise arm back to clear cube of table
+    cube_pose[2] += 0.09
+    plan = plan_motion_constrained(right_arm, cube_pose)
+    if plan.joint_trajectory.points:
+        print("Attempting to raise arm up")
+        rospy.sleep(2.0)
+        right_arm.execute(plan)
+    else:
+        print("Planning failed")
 
-        # Move arm to drop off location
+    # Move arm to drop off location
+    while not cleared_table and not rospy.is_shutdown():
+        print("Attempting to move clear of table")
+        rospy.sleep(2.0)
         plan = plan_motion(right_arm, CLEAR_OF_TABLE_POSITION)
-        if plan.joint_trajectory.points:
-            raw_input('Press <Enter> to clear table')
-            right_arm.execute(plan)
-        else:
-            print("Planning failed")
-            
+        cleared_table = execute_motion(right_arm, plan)
+
+    while not at_drop_off and not rospy.is_shutdown():
+        print("Attempting to move to drop off")
+        rospy.sleep(2.0)
         plan = plan_motion(right_arm, CUBE_DROP_OFF_POSITION)
-        if plan.joint_trajectory.points:
-            raw_input('Press <Enter> to send arm to drop off')
-            right_arm.execute(plan)
-        else:
-            print("Planning failed")
+        at_drop_off = execute_motion(right_arm, plan)
+    gripper.open()
 
 
 if __name__ == '__main__':
