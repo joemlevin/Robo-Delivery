@@ -13,7 +13,13 @@ from intera_interface import CHECK_VERSION
 
 DEPTH_CORRECTION = .9
 
-CUBE_ID_POSE = (0.569, -0.376, 0.105, -0.626, -0.362, 0.649, -0.238)
+CUBE_ID_POSE = {'right_j6': 0.0456103515625, 'right_j5': 1.0447099609375, 
+    'right_j4': -0.6278916015625, 'right_j3': -2.2208623046875, 
+    'right_j2': 0.1072822265625, 'right_j1': 1.12991015625, 'right_j0': -0.6118203125}
+
+CLEAR_OF_TABLE_POSITION = (0.593, 0.000, 0.322, 0.0, -1.0, 0.0, 0.0)
+CUBE_DROP_OFF_POSITION = (0.653, 0.249, -0.397, 0.0, -1.0, 0.0, 0.0)
+
 
 def plan_motion(commander, goal_pose):
     goal = PoseStamped()
@@ -58,7 +64,7 @@ def plan_motion_constrained(commander, goal_pose):
     orien_const.weight = 1.0;
     consts = Constraints()
     consts.orientation_constraints = [orien_const]
-    right_arm.set_path_constraints(consts)
+    commander.set_path_constraints(consts)
     #Plan a path
     plan = commander.plan()
     #Return plan
@@ -70,14 +76,10 @@ def plan_motion_constrained(commander, goal_pose):
 #     limb = intera_interface.Limb(valid_limbs[0])
 #     joint_angles = limb.joint_angles()
 #     return joint_angles
-
-def set_initial_pose():
+def set_pose(pose):
     rp = intera_interface.RobotParams()
     valid_limbs = rp.get_limb_names()
     limb = intera_interface.Limb(valid_limbs[0])
-    pose = {'right_j6': -4.71413671875, 'right_j5': -2.973470703125, 
-        'right_j4': -2.5042646484375, 'right_j3': -2.0749814453125, 
-        'right_j2': -2.24883984375, 'right_j1': 0.6924912109375, 'right_j0': -1.5153515625}
     success = False
     while not success and not rospy.is_shutdown():
         limb.set_joint_positions(pose)
@@ -91,7 +93,6 @@ def set_initial_pose():
 def main():
     #Initialize moveit_commander
     moveit_commander.roscpp_initialize(sys.argv)
-
     #Start a node
     rospy.init_node('moveit_node')
     # Initialize tf listener
@@ -106,6 +107,11 @@ def main():
     right_arm.set_planner_id('RRTConnectkConfigDefault')
     right_arm.set_planning_time(10)
 
+    # Initialize gripper
+    gripper = intera_interface.gripper.Gripper('right')
+    gripper.calibrate()
+    rospy.sleep(2.0)
+
     #Initialize goals
     goal_1 = PoseStamped()
     goal_1.header.frame_id = "base"
@@ -115,7 +121,8 @@ def main():
         success = False
         # Move arm to cube detection area
         raw_input('Press <Enter> to go to cube identification area')
-        set_initial_pose()
+        set_pose(CUBE_ID_POSE)
+
         # Attempt to move arm above AR Cube with gripper pointed down
         while not success and not rospy.is_shutdown():
             print("Place cube within view of hand camera")
@@ -126,27 +133,55 @@ def main():
                 success = True
             except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
                 continue
-        trans_corrected = [DEPTH_CORRECTION * x + (1 - DEPTH_CORRECTION) * y for x, y in zip(trans_ar_to_base, trans_head_to_base)]
         cube_pose = trans_ar_to_base + [0, -1.0, 0, 0]
+        # Add in z-axis offset to account for gripper length
         cube_pose[2] += .2
         plan = plan_motion(right_arm, cube_pose)
         if plan.joint_trajectory.points:
             #Execute the plan
             raw_input('Press <Enter> to move the right arm to goal pose 1 (path constraints are never enforced during this motion): ')
             right_arm.execute(plan)
+            gripper.open()
         else:
             print("Planning failed")
         rospy.sleep(2)
+
         # Attempt to lower gripper over Cube for pick up
-        # TODO Find better way of doing this
-        cube_pose[2] -= .2
+        cube_pose[2] -= 0.09
+
         plan = plan_motion_constrained(right_arm, cube_pose)
         if plan.joint_trajectory.points:
             #Execute the plan
             raw_input('Press <Enter> to lower arm over cube')
             right_arm.execute(plan)
+            gripper.close()
         else:
             print("Planning failed")
+
+        # Raise arm back to clear cube of table
+        cube_pose[2] += 0.09
+        plan = plan_motion_constrained(right_arm, cube_pose)
+        if plan.joint_trajectory.points:
+            raw_input('Press <Enter> to raise arm back up')
+            right_arm.execute(plan)
+        else:
+            print("Planning failed")
+
+        # Move arm to drop off location
+        plan = plan_motion(right_arm, CLEAR_OF_TABLE_POSITION)
+        if plan.joint_trajectory.points:
+            raw_input('Press <Enter> to clear table')
+            right_arm.execute(plan)
+        else:
+            print("Planning failed")
+            
+        plan = plan_motion(right_arm, CUBE_DROP_OFF_POSITION)
+        if plan.joint_trajectory.points:
+            raw_input('Press <Enter> to send arm to drop off')
+            right_arm.execute(plan)
+        else:
+            print("Planning failed")
+
 
 if __name__ == '__main__':
     main()
