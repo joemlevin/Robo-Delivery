@@ -41,7 +41,7 @@ def move_to_goal(move_base, linear_pos, orientation):
   print("Starting to make a goal...")
   ### Make the goal ###
   ar_goal = MoveBaseGoal()
-  ar_goal.target_pose.header.frame_id = '/map'
+  ar_goal.target_pose.header.frame_id = '/odom'
   ar_goal.target_pose.header.stamp = rospy.Time.now()
   # Create the pose
   ar_goal.target_pose.pose.position.x = linear_pos[0] 
@@ -84,7 +84,18 @@ def turn(vel_pub):
 
   # Publish our velocity twist to the 'teleop' topic
   vel_pub.publish(forward_motion)
-  return
+
+def move_up(vel_pub):
+  time = rospy.Time()
+  start = time.now().secs
+  while((time.now().secs - start < 3) and not rospy.is_shutdown()):
+    linear_motion = Vector3(.3,0,0)
+    angular_motion = Vector3(0,0,0)
+    forward_motion = Twist(linear_motion, angular_motion)
+    ######
+
+    # Publish our velocity twist to the 'teleop' topic
+    vel_pub.publish(forward_motion)
 
 # Define the method which contains the main functionality of the node.
 def mover():
@@ -118,9 +129,13 @@ def mover():
   # Set up the while loop and wait for the robot to warm up
   time.sleep(5)
   ar_tag = '/ar_marker_0'
-  (start_trans, _) = listener.lookupTransform('/map', '/base_link', rospy.Time(0))
+  # ar_tag = '/ar_marker_11'  ###CHANGE THIS PLEASEEEE
+  start_trans = [0,0,0]
   start_rotation = Quaternion(0,0,0.26428,0.96445)
   current_stage = Stage.DELIVER
+  # state = move_to_goal(move_base, start_trans, start_rotation)
+  # print_status(state)
+  ar_11_count = 0
 
   # Loop until the node is killed with Ctrl-C
   while not rospy.is_shutdown():
@@ -128,56 +143,54 @@ def mover():
       # Deliver the object to destination
       # Get the trans and rotational positions of the AR Tag
       try: 
-        (trans, rotation) = listener.lookupTransform('/map', ar_tag, rospy.Time(0))
+        (trans, rotation) = listener.lookupTransform('/odom', ar_tag, rospy.Time(0))
       except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException) as e:
         # If I cannot find an AR Tag, turn to search for it. 
         # Make the robot turn until it finds the AR Tag. 
         turn(vel_pub)
       else:
         # We have found an AR_Tag. Let's take move to it.
+
+        # Set up the positions
         if (ar_tag == '/ar_marker_0'):
-          rotation = Quaternion(0,0,0.178,0.984)
+          rotation = Quaternion(0,0,0,0.984)
           trans[1] += 1
-        if (ar_tag == '/ar_marker_4'):
-          rotation = Quaternion(0,0,0.178,0.984)
-          trans[1] += -0.9
         if (ar_tag == '/ar_marker_11'):
-          # Move to that exact position
-          trans[0] += -0.6
-          # trans[1] += 0.
+          trans[0] -= 1
+          trans[1] += 0
           rotation = Quaternion(0,0,0,0.99275)
+
         # Now take the action. 
         rospy.loginfo("Taking the motion for AR Tag: %r" % ar_tag)
-        state = move_to_goal(move_base, trans, rotation)
-        print_status(state)
-        if state == GoalStatus.SUCCEEDED:
-          # Transition to the next state.
-          if ar_tag == '/ar_marker_0':
-            ar_tag = '/ar_marker_4'
-          elif ar_tag == '/ar_marker_4':
-            ar_tag = '/ar_marker_11'
-          elif ar_tag == '/ar_marker_11':
-            pub_string = "Sawyer I am here! %s" % (rospy.get_time())
-            status_channel.publish(pub_string)
-            current_stage = Stage.WAIT
-            rospy.loginfo("I am about to wait...")
-        elif state == GoalStatus.PENDING:
-          # Try it again or wait until it is not pending
-          break
-        else: 
-          # We have failed and we should do something.
-          break
+        while (move_to_goal(move_base, trans, rotation) != GoalStatus.SUCCEEDED):
+          rospy.loginfo("Haven't reached goal. Trying again.")
+        
+        # Once it exits the while loop, it should have succeeded in planning.
+        rospy.loginfo("We should have reached goal.")
+
+        # Transition to the next state.
+        if ar_tag == '/ar_marker_0':
+          ar_tag = '/ar_marker_11'
+        elif ar_tag == '/ar_marker_11':
+          move_up(vel_pub)
+          pub_string = "Sawyer I am here! %s" % (rospy.get_time())
+          status_channel.publish(pub_string)
+          current_stage = Stage.WAIT
+          rospy.loginfo("I am about to wait...")
+
     elif current_stage == Stage.WAIT:
       # Wait until I get a signal from Saywer
       raw_input("Just press enter.")
+      current_stage = Stage.RETURN
     else:
       # Return to the starting point
-      state = move_to_goal(move_base, start_trans, start_rotation)
-      print_status(state)
-  
+      while (move_to_goal(move_base, start_trans, start_rotation) != GoalStatus.SUCCEEDED):
+          print_status(state) 
+      # Once it exits the while loop, it should have succeeded in planning.
+      rospy.loginfo("We should be done!")
+      break
+    continue
 
-    # Use our rate object to sleep until it is time to publish again
-    r.sleep()
       
 # This is Python's sytax for a main() method, which is run by default
 # when exectued in the shell
