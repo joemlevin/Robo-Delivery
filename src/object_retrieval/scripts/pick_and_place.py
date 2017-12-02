@@ -134,9 +134,8 @@ def set_pose(pose):
 def find_tag(listener, marker="/ar_marker_0"):
     cube_detected = False
     success = False
-    while not cube_detected and not success and not rospy.is_shutdown():
+    while not (cube_detected and success) and not rospy.is_shutdown():
         print("Attempting to find pick up location")
-        rospy.sleep(2.0)
         try:
             if not cube_detected:
                 (cube_pos, cube_orientation) = listener.lookupTransform('/base', marker, rospy.Time(0))
@@ -214,8 +213,8 @@ def pick_up(robot, scene, right_arm, gripper, listener):
     drop_off_pos = find_tag(listener, '/ar_marker_11')
     drop_off_pose = drop_off_pos + [0.0, -1.0, 0.0, 0.0]
     drop_off_pose[2] += DROP_OFFSET
+
     # Drop off cube
-    
     at_drop_off = False
     while not at_drop_off and not rospy.is_shutdown():
         print("Dropping off cube")
@@ -227,6 +226,7 @@ def pick_up(robot, scene, right_arm, gripper, listener):
 
 def drop_off(robot, scene, right_arm, gripper, listener):
     # Instantiate flags for different phases
+    print("Beginning table cube drop off")
     cube_detected = False
     success = False
     at_pick_up = False
@@ -297,11 +297,11 @@ def drop_off(robot, scene, right_arm, gripper, listener):
     set_pose(TURTLEBOT_ID_POSE)
 
     drop_off_pose = find_tag(listener, '/ar_marker_9') + [0, -1.0, 0, 0]
-    drop_off_pose[2] += .1 
+    drop_off_pose[2] += GRIPPER_OFFSET
     while not at_drop_off and not rospy.is_shutdown():
         print("Attempting to move to drop off")
         rospy.sleep(0.5)
-        plan = plan_motion(right_arm, CUBE_DROP_OFF_POSITION)
+        plan = plan_motion(right_arm, drop_off_pose)
         at_drop_off = execute_motion(right_arm, plan)
     rospy.sleep(1.0)
     gripper.open()
@@ -309,17 +309,17 @@ def drop_off(robot, scene, right_arm, gripper, listener):
 def main():
     #Initialize moveit_commander
     moveit_commander.roscpp_initialize(sys.argv)
-    #Start a node
+
+    #Start moveit_node
     rospy.init_node('moveit_node')
+
     # Initialize tf listener
     listener = tf.TransformListener()
-    #Initialize both arms
+
+    #Initialize arm and scene
     robot = moveit_commander.RobotCommander()
     scene = moveit_commander.PlanningSceneInterface()
-#    left_arm = moveit_commander.MoveGroupCommander('left_arm')
     right_arm = moveit_commander.MoveGroupCommander('right_arm')
-#    left_arm.set_planner_id('RRTConnectkConfigDefault')
-#    left_arm.set_planning_time(10)
     right_arm.set_planner_id('RRTConnectkConfigDefault')
     right_arm.set_planning_time(10)
 
@@ -330,11 +330,13 @@ def main():
 
     # Construct scene for obstacle avoidance
     define_scene(robot, scene)
-    # Initiate pick up procedure
-    pick_up(robot, scene, right_arm, gripper, listener)
+    # Loop and perform pick and and drop off procedures
+    while not rospy.is_shutdown():
+        # Initiate pick up procedure
+        pick_up(robot, scene, right_arm, gripper, listener)
 
-    # Initiate drop off procedure
-    drop_off(robot, scene, right_arm, gripper, listener)
+        # Initiate drop off procedure
+        drop_off(robot, scene, right_arm, gripper, listener)
 
 if __name__ == '__main__':
     main()
