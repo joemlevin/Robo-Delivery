@@ -143,7 +143,7 @@ def find_tag(listener, marker="/ar_marker_0"):
                 cube_detected = True
                 print("Cube Detected!")
             else:
-                rospy.sleep(2.0)
+                rospy.sleep(3.0)
                 (cube_pos, cube_orientation) = listener.lookupTransform('/base', marker, rospy.Time(0))
                 success = True
                 print("Acquired cube position")
@@ -290,6 +290,14 @@ def drop_off(robot, scene, right_arm, gripper, listener):
         plan = plan_motion(right_arm, CLEAR_OF_TABLE_POSITION)
         cleared_table = execute_motion(right_arm, plan)
 
+    rospy.sleep(0.5)
+    set_pose(INITIAL_POSITION)
+
+    rospy.sleep(0.5)
+    set_pose(TURTLEBOT_ID_POSE)
+
+    drop_off_pose = find_tag(listener, '/ar_marker_9') + [0, -1.0, 0, 0]
+    drop_off_pose[2] += .1 
     while not at_drop_off and not rospy.is_shutdown():
         print("Attempting to move to drop off")
         rospy.sleep(0.5)
