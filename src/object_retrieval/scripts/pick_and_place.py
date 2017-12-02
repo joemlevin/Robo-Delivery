@@ -36,6 +36,30 @@ TURTLEBOT_ID_POSE = {'right_j6': 1.8170166015625,
 CLEAR_OF_TABLE_POSITION = (0.593, 0.000, 0.322, 0.0, -1.0, 0.0, 0.0)
 CUBE_DROP_OFF_POSITION = (0.709, 0.228, -0.235, 0.0, -1.0, 0.0, 0.0)
 
+def define_scene(robot, scene):
+    rospy.sleep(2)
+    p = PoseStamped()
+    p.header.frame_id = robot.get_planning_frame()
+    p.pose.position.x = 0.69
+    p.pose.position.y = -.32
+    p.pose.position.z = -.53
+    print("Adding box to scene")
+    scene.attach_box("base","table", p, (.25, .42, 0.75))
+    p2 = PoseStamped()
+    p2.pose.position.x = -0.55
+    p2.pose.position.y = 0.91
+    p2.pose.position.z = 0.432
+    scene.attach_box("base", "wall1", p2, (1.6, .01, 5))
+    print("Attaching first wall")
+    p3 = PoseStamped()
+    p3.pose.position.x = -1.02
+    p3.pose.position.y = 0.2
+    p3.pose.position.z = 0.15
+    print("Attaching second wall")
+    scene.attach_box("base", "wall2", p3, (0.01, 1.6, 5))
+    rospy.sleep(2)
+    objects = scene.get_objects(["table"])
+    print("Scene constructed")
 
 def plan_motion(commander, goal_pose):
     goal = PoseStamped()
@@ -47,6 +71,7 @@ def plan_motion(commander, goal_pose):
     goal.pose.orientation.y = goal_pose[4]
     goal.pose.orientation.z = goal_pose[5]
     goal.pose.orientation.w = goal_pose[6]
+    commander.clear_path_constraints()
     commander.set_pose_target(goal)
 
     #Set the start state for the right arm
@@ -130,7 +155,9 @@ def find_tag(listener, marker="/ar_marker_0"):
 
 def pick_up(robot, scene, right_arm, gripper, listener):
     # Instantiate flags for different phases
+    print("Beginning turtlebot cube pick up")
     at_pick_up = False
+    lowered = False
     # Move arm to initial position
     print("Moving to initial position")
     rospy.sleep(0.5)
@@ -140,7 +167,7 @@ def pick_up(robot, scene, right_arm, gripper, listener):
     print("Moving to turtlebot detection position")
     rospy.sleep(0.5)
     set_pose(TURTLEBOT_ID_POSE)
-
+    # sys.exit()
     # Locate cube
     cube_pos = find_tag(listener, '/ar_marker_10')
     # Add in downward facing orientation to position of AR Cube
@@ -153,21 +180,26 @@ def pick_up(robot, scene, right_arm, gripper, listener):
         plan = plan_motion(right_arm, cube_pose)
         at_pick_up = execute_motion(right_arm, plan)
     gripper.open()
-
+    print("Success")
     rospy.sleep(2)
 
     # Attempt to lower gripper over Cube for pick up
-    cube_pose[2] -= PICK_OFFSET - .04
+    cube_pose[2] -= PICK_OFFSET
 
     plan = plan_motion_constrained(right_arm, cube_pose)
-    if plan.joint_trajectory.points:
-        #Execute the plan
+    while not lowered and not rospy.is_shutdown():
         print("Attempting to lower onto cube")
-        rospy.sleep(0.5)
-        right_arm.execute(plan)
-        gripper.close()
-    else:
-        print("Planning failed")
+        plan = plan_motion_constrained(right_arm, cube_pose)
+        if plan.joint_trajectory.points:
+            print("plan found. Executing")
+            #Execute the plan
+            rospy.sleep(0.5)
+            right_arm.execute(plan)
+            gripper.close()
+            lowered = True
+        else:
+            print("Planning failed")
+            lowered = False
 
     # Move back to initial position
     print("Moving back to initial position")
@@ -179,7 +211,7 @@ def pick_up(robot, scene, right_arm, gripper, listener):
     rospy.sleep(0.5)
     set_pose(CUBE_ID_POSE)
     # Find drop off location
-    drop_off_pos = find_tag(listener, '/ar_marker_3')
+    drop_off_pos = find_tag(listener, '/ar_marker_11')
     drop_off_pose = drop_off_pos + [0.0, -1.0, 0.0, 0.0]
     drop_off_pose[2] += DROP_OFFSET
     # Drop off cube
@@ -263,6 +295,7 @@ def drop_off(robot, scene, right_arm, gripper, listener):
         rospy.sleep(0.5)
         plan = plan_motion(right_arm, CUBE_DROP_OFF_POSITION)
         at_drop_off = execute_motion(right_arm, plan)
+    rospy.sleep(1.0)
     gripper.open()
 
 def main():
@@ -287,11 +320,13 @@ def main():
     gripper.calibrate()
     rospy.sleep(0.5)
 
+    # Construct scene for obstacle avoidance
+    define_scene(robot, scene)
     # Initiate pick up procedure
     pick_up(robot, scene, right_arm, gripper, listener)
 
     # Initiate drop off procedure
-    # drop_off(robot, scene, right_arm, gripper, listener)
+    drop_off(robot, scene, right_arm, gripper, listener)
 
 if __name__ == '__main__':
     main()

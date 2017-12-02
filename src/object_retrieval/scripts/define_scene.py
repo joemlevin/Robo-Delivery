@@ -19,15 +19,25 @@ def main():
 
     p = PoseStamped()
     p.header.frame_id = robot.get_planning_frame()
-    p.pose.position.x = 1.2
-    p.pose.position.y = 0.0
-    p.pose.position.z = 0.1
+    p.pose.position.x = 0.69
+    p.pose.position.y = -.32
+    p.pose.position.z = -.53
     print("Adding box to scene")
-    scene.add_box("table", p, (0.5, 1.5, 0.6))
+    scene.attach_box("base","table", p, (.25, .42, 0.75))
+    p2 = PoseStamped()
+    p2.pose.position.x = -0.55
+    p2.pose.position.y = 0.91
+    p2.pose.position.z = 0.432
+    scene.attach_box("base", "wall1", p2, (1.6, .01, 5))
+    print("Attaching first wall")
+    p3 = PoseStamped()
+    p3.pose.position.x = -1.02
+    p3.pose.position.y = 0.2
+    p3.pose.position.z = 0.15
+    print("Attaching second wall")
+    scene.attach_box("base", "wall2", p3, (0.01, 1.6, 5))
     rospy.sleep(2)
     objects = scene.get_objects(["table"])
-    print(objects)
-    print("Spinning...")
-    rospy.spin()
+    print("Scene constructed")
 if __name__ == '__main__':
     main()
