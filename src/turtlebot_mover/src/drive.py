@@ -86,10 +86,9 @@ def turn(vel_pub):
   linear_motion = Vector3(0, 0, 0)
   angular_motion = Vector3(0,0,0.70)
   forward_motion = Twist(linear_motion, angular_motion)
-  ######
-
   # Publish our velocity twist to the 'teleop' topic
   vel_pub.publish(forward_motion)
+  return
 
 # def move_up(vel_pub):
 #   time = rospy.Time()
@@ -132,13 +131,12 @@ def mover():
   time.sleep(5)
   ar_tag = '/ar_marker_0'
   start_trans = [0,0,0]
-  start_rotation = Quaternion(0,0,0.26428,0.96445)
   current_stage = Stage.DELIVER
 
   # Loop until the node is killed with Ctrl-C
   while not rospy.is_shutdown():
     if current_stage == Stage.DELIVER:
-      # Deliver the object to destination
+      ##### Deliver the object to destination #####
       # Get the trans and rotational positions of the AR Tag
       try: 
         (trans, _) = listener.lookupTransform('/map', ar_tag, rospy.Time(0))
@@ -147,8 +145,7 @@ def mover():
         # Make the robot turn until it finds the AR Tag. 
         turn(vel_pub)
       else:
-        ###### We have found an AR_Tag. Let's take move to it. ######
-
+        # We have found an AR_Tag. Let's take move to it. #
         # Find my position
         (my_trans, _) = listener.lookupTransform('/map', '/base_link', rospy.Time(0))
 
@@ -160,7 +157,7 @@ def mover():
           break
 
         rospy.loginfo("We should have reached goal.")
-        rospy.sleep(2) # Sleep for 2 seconds
+        rospy.sleep(1) # Sleep for 1 seconds
         # Transition to the next state.
         if ar_tag == '/ar_marker_0':
           ar_tag = '/ar_marker_4'
@@ -171,20 +168,19 @@ def mover():
           pub_string = "Sawyer I am here! %s" % (rospy.get_time())
           status_channel.publish(pub_string)
           current_stage = Stage.WAIT
-          rospy.loginfo("I am about to wait...")
-
     elif current_stage == Stage.WAIT:
-      # Wait until I get a signal from Saywer
-      raw_input("Just press enter.")
+      ##### Wait until I get a signal from Saywer #####
+      raw_input("Waiting. Press enter to continue.")
       current_stage = Stage.RETURN
     else:
-      # Return to the starting point
-      # while (move_to_goal(move_base, start_trans, start_rotation) != GoalStatus.SUCCEEDED):
-      #     print_status(state) 
-      # # Once it exits the while loop, it should have succeeded in planning.
-      # rospy.loginfo("We should be done!")
-      # break
-      continue
+      ##### Return to the starting point #####
+      (my_trans, _) = listener.lookupTransform('/map', '/base_link', rospy.Time(0))
+      move_status = move_to_goal(move_base, start_trans, my_trans)
+      if move_status == Stage.SUCCESS:
+        rospy.loginfo("Returned to start.")
+      else:
+        rospy.loginfo("Failed to move to start.")
+      break
 
     # Sleep for a quick sec in order to prevent weird behaviors with the motions.
     r.sleep() 
