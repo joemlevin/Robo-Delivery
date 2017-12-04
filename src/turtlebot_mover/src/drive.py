@@ -35,7 +35,7 @@ class Status(Enum):
   SUCCESS = 1
   FAILED = 2
 
-per_line_to_move = .80
+per_line_to_move = .6
 
 # Important Information: 
 # As long as you and the turtlebot is using the same "Master" 
@@ -43,7 +43,7 @@ per_line_to_move = .80
 # "export ROS_MASTER_URI=http://[TurtleID].local.11311 -- 
 # then you can talk to the topics used in the turtlebot's machine. 
 
-def move_to_goal(move_base, linear_pos, my_pos):
+def move_to_goal(move_base, linear_pos, my_pos, is_start=False):
   print("Starting to make a goal...")
   
   ### Find the new coordinates ###
@@ -54,7 +54,9 @@ def move_to_goal(move_base, linear_pos, my_pos):
 
   new_x = (per_line_to_move*z)/math.sqrt(1+m**2) + x_1
   new_y = (new_x - x_1)*m + y_1 
-
+  if is_start:
+    new_x = x_2
+    new_y = y_2
   ### Make the goal ###
   ar_goal = MoveBaseGoal()
   ar_goal.target_pose.header.frame_id = '/map'
@@ -73,7 +75,8 @@ def move_to_goal(move_base, linear_pos, my_pos):
   state = GoalStatus.PENDING
   time = rospy.Time()
   start = time.now().secs
-  while((not (success and state == GoalStatus.SUCCEEDED) or (time.now().secs - start) < 10) and not rospy.is_shutdown()): 
+  while((not (success and state == GoalStatus.SUCCEEDED) or (time.now().secs - start) < 10) and not rospy.is_shutdown()):
+    print("Attempting to path to goal")
     move_base.send_goal(ar_goal) 
     success = move_base.wait_for_result(rospy.Duration(60))
     state = move_base.get_state()
@@ -90,16 +93,16 @@ def turn(vel_pub):
   vel_pub.publish(forward_motion)
   return
 
-# def move_up(vel_pub):
-#   time = rospy.Time()
-#   start = time.now().secs
-#   while((time.now().secs - start < 3) and not rospy.is_shutdown()):
-#     linear_motion = Vector3(.3,0,0)
-#     angular_motion = Vector3(0,0,0)
-#     forward_motion = Twist(linear_motion, angular_motion)
-#     ######
-#     # Publish our velocity twist to the 'teleop' topic
-#     vel_pub.publish(forward_motion)
+def move_up(vel_pub, direction):
+  time = rospy.Time()
+  start = time.now().secs
+  while((time.now().secs - start < 3) and not rospy.is_shutdown()):
+    linear_motion = Vector3(.23 * direction,0,0)
+    angular_motion = Vector3(0,0,0)
+    forward_motion = Twist(linear_motion, angular_motion)
+    ######
+    # Publish our velocity twist to the 'teleop' topic
+    vel_pub.publish(forward_motion)
 
 # Define the method which contains the main functionality of the node.
 def mover():
@@ -122,7 +125,6 @@ def mover():
   
   # Create a listener to listen to position of detected AR Tag.
   listener = tf.TransformListener()
-
   # Create a timer object that will sleep long enough to result in
   # a 10Hz publishing rate
   r = rospy.Rate(10) # 10hz  
@@ -130,7 +132,7 @@ def mover():
   # Set up the while loop and wait for the robot to warm up
   time.sleep(5)
   ar_tag = '/ar_marker_0'
-  start_trans = [0,0,0]
+  start_trans, _ = listener.lookupTransform('/map', 'base_link', rospy.Time(0))
   current_stage = Stage.DELIVER
 
   # Loop until the node is killed with Ctrl-C
@@ -144,6 +146,7 @@ def mover():
         # If I cannot find an AR Tag, turn to search for it. 
         # Make the robot turn until it finds the AR Tag. 
         turn(vel_pub)
+        rospy.sleep(1.0)
       else:
         # We have found an AR_Tag. Let's take move to it. #
         # Find my position
@@ -152,6 +155,8 @@ def mover():
         # Now move along that direction. 
         rospy.loginfo("Taking the motion for AR Tag: %r" % ar_tag)
         move_status = move_to_goal(move_base, trans, my_trans)
+        if ar_tag == '/ar_marker_11':
+          move_up(vel_pub, 1)
         if move_status != Status.SUCCESS:
           rospy.loginfo("Could not move to position.")
           break
@@ -174,9 +179,11 @@ def mover():
       current_stage = Stage.RETURN
     else:
       ##### Return to the starting point #####
+      move_up(vel_pub, -1)
+      move_up(vel_pub, -1)
       (my_trans, _) = listener.lookupTransform('/map', '/base_link', rospy.Time(0))
-      move_status = move_to_goal(move_base, start_trans, my_trans)
-      if move_status == Stage.SUCCESS:
+      move_status = move_to_goal(move_base, start_trans, my_trans, is_start=True)
+      if move_status == Status.SUCCESS:
         rospy.loginfo("Returned to start.")
       else:
         rospy.loginfo("Failed to move to start.")
