@@ -2,6 +2,6 @@ source /opt/ros/indigo/setup.bash
 source /scratch/shared/baxter_ws/devel/setup.bash
 export ROS_HOSTNAME=$(hostname --short).local
 # Configure the network such that the Turtlebot is the ROS Master and not my computer
-export ROS_MASTER_URI=http://blue.local:11311
-export ROS_IP=blue.local
+export ROS_MASTER_URI=http://yellow.local:11311
+export ROS_IP=yellow.local
 

@@ -97,7 +97,7 @@ def move_up(vel_pub, direction):
   time = rospy.Time()
   start = time.now().secs
   while((time.now().secs - start < 3) and not rospy.is_shutdown()):
-    linear_motion = Vector3(.23 * direction,0,0)
+    linear_motion = Vector3(.25 * direction,0,0)
     angular_motion = Vector3(0,0,0)
     forward_motion = Twist(linear_motion, angular_motion)
     ######

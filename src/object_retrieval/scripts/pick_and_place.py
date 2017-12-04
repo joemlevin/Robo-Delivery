@@ -194,12 +194,27 @@ def pick_up(robot, scene, right_arm, gripper, listener):
             #Execute the plan
             rospy.sleep(0.5)
             right_arm.execute(plan)
+            rospy.sleep(0.2)
             gripper.close()
             lowered = True
         else:
             print("Planning failed")
             lowered = False
 
+    # Bring gripper back up
+    raised = False
+    cube_pose[2] += PICK_OFFSET
+    while not raised and not rospy.is_shutdown():
+        print("Bring arm back up")
+        plan = plan_motion(right_arm, cube_pose)
+        if plan.joint_trajectory.points:
+            print("Plan found. Executing")
+            rospy.sleep(0.5)
+            right_arm.execute(plan)
+            raised = True
+        else:
+            print("Planning failed")
+            raised = False
     # Move back to initial position
     print("Moving back to initial position")
     rospy.sleep(0.5)
@@ -212,7 +227,7 @@ def pick_up(robot, scene, right_arm, gripper, listener):
     # Find drop off location
     drop_off_pos = find_tag(listener, '/ar_marker_11')
     drop_off_pose = drop_off_pos + [0.0, -1.0, 0.0, 0.0]
-    drop_off_pose[2] += DROP_OFFSET
+    drop_off_pose[2] += DROP_OFFSET + 0.05
 
     # Drop off cube
     at_drop_off = False
@@ -222,11 +237,34 @@ def pick_up(robot, scene, right_arm, gripper, listener):
         plan = plan_motion(right_arm, drop_off_pose)
         at_drop_off = execute_motion(right_arm, plan)
         rospy.sleep(0.2)
+
+    drop_off_pose[2] -= 0.05
+    at_drop_off = False
+
+    while not at_drop_off and not rospy.is_shutdown():
+        print("Lowering to drop off")
+        rospy.sleep(0.5)
+        plan = plan_motion_constrained(right_arm, drop_off_pose)
+        at_drop_off = execute_motion(right_arm, plan)
+        rospy.sleep(0.2)
     gripper.open()
+
+    drop_off_pose[2] += 0.1
+
+    at_drop_off = False
+    while not at_drop_off and not rospy.is_shutdown():
+        print("Raising to clear cube")
+        rospy.sleep(0.5)
+        plan = plan_motion_constrained(right_arm, drop_off_pose)
+        at_drop_off = execute_motion(right_arm, plan)
+        rospy.sleep(0.2)
+
+    print("Pick up of delivered cube complete.")
 
 def drop_off(robot, scene, right_arm, gripper, listener):
     # Instantiate flags for different phases
-    print("Beginning table cube drop off")
+    print("Beginning drop off")
+
     cube_detected = False
     success = False
     at_pick_up = False
@@ -297,6 +335,8 @@ def drop_off(robot, scene, right_arm, gripper, listener):
     set_pose(TURTLEBOT_ID_POSE)
 
     drop_off_pose = find_tag(listener, '/ar_marker_9') + [0, -1.0, 0, 0]
+    rospy.sleep(0.5)
+    set_pose(INITIAL_POSITION)
     drop_off_pose[2] += GRIPPER_OFFSET
     while not at_drop_off and not rospy.is_shutdown():
         print("Attempting to move to drop off")
