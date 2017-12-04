@@ -180,7 +180,7 @@ def mover():
     else:
       ##### Return to the starting point #####
       move_up(vel_pub, -1)
-      move_up(vel_pub, -1)
+      # move_up(vel_pub, -1)
       (my_trans, _) = listener.lookupTransform('/map', '/base_link', rospy.Time(0))
       move_status = move_to_goal(move_base, start_trans, my_trans, is_start=True)
       if move_status == Status.SUCCESS:
