@@ -141,6 +141,7 @@ def find_tag(listener, marker="/ar_marker_0"):
                 (cube_pos, cube_orientation) = listener.lookupTransform('/base', marker, rospy.Time(0))
                 cube_detected = True
                 print("Cube Detected!")
+                rospy.sleep(3.0)
             else:
                 rospy.sleep(3.0)
                 (cube_pos, cube_orientation) = listener.lookupTransform('/base', marker, rospy.Time(0))
@@ -181,7 +182,6 @@ def pick_up(robot, scene, right_arm, gripper, listener):
     gripper.open()
     print("Success")
     rospy.sleep(2)
-
     # Attempt to lower gripper over Cube for pick up
     cube_pose[2] -= PICK_OFFSET
 
@@ -200,7 +200,6 @@ def pick_up(robot, scene, right_arm, gripper, listener):
         else:
             print("Planning failed")
             lowered = False
-
     # Bring gripper back up
     raised = False
     cube_pose[2] += PICK_OFFSET
@@ -219,7 +218,6 @@ def pick_up(robot, scene, right_arm, gripper, listener):
     print("Moving back to initial position")
     rospy.sleep(0.5)
     set_pose(INITIAL_POSITION)
-
     # Move arm to drop off detection position
     print("Moving to determine drop off location")
     rospy.sleep(0.5)
